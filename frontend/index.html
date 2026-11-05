@@ -199,20 +199,20 @@
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                Backend Parca Spike
+                Parca Continuous Profiling Spike
               </span>
               <span class="text-xs font-mono text-slate-500">POST /api/issue</span>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1">Trigger Performance Issue</h3>
+            <h3 class="text-lg font-bold text-white mb-1">Massive Performance Bottleneck</h3>
             <p class="text-xs text-slate-400 mb-5">
-              Runs CPU math loops, string thrashing, and bubble sort on the backend service to generate vivid Parca flamegraphs.
+              Runs expensive nested CPU & memory loops combined with a deliberate 10-second sleep, giving Parca scrapers ample time to capture deep flamegraphs.
             </p>
           </div>
           <button id="btnIssue" onclick="triggerPerformanceIssue()" class="w-full py-3.5 px-4 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 glow-yellow shadow-lg cursor-pointer">
             <svg id="iconIssue" class="w-5 h-5 text-slate-950" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.316.492-.59 1.05-.855 1.636C8.252 6.84 7.5 9.07 7.5 11a4.5 4.5 0 109 0c0-.85-.148-1.666-.42-2.42a4.485 4.485 0 00-1.572-2.124c-.583-.464-1.29-.762-1.913-1.003l-.2-.08zM12 14a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
             </svg>
-            <span id="textIssue">Trigger Performance Issue (3s)</span>
+            <span id="textIssue">Trigger Massive Bottleneck (~14s)</span>
           </button>
         </div>
 
@@ -226,10 +226,10 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </div>
             <div>
-              <h4 class="text-sm font-bold text-amber-200">Backend Performance Hotspot Executed</h4>
+              <h4 class="text-sm font-bold text-amber-200">Massive Bottleneck Executed Successfully</h4>
               <p id="issueReportDetails" class="text-xs text-amber-300/80 mt-1 font-mono leading-relaxed"></p>
               <p class="text-xs text-slate-400 mt-2">
-                Flamegraph target: Open your Parca UI and filter profile for pod <code class="text-amber-300 font-mono">pokemon-backend</code> to inspect functions <code class="text-amber-300 font-mono">main.InefficientCPUBurner</code> and <code class="text-amber-300 font-mono">main.InefficientMemoryAllocator</code>.
+                Flamegraph target: Open Parca UI and filter for <code class="text-amber-300 font-mono">pokemon-backend</code>. You will clearly see <code class="text-amber-300 font-mono">main.BigPokemonBottleneck</code> dominating both CPU and goroutine stack views!
               </p>
             </div>
           </div>
@@ -317,13 +317,13 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
             <span class="text-amber-400 font-bold block mb-1">Backend CPU Flamegraph</span>
-            <span class="text-slate-400">Path: <a href="/debug/pprof/profile?seconds=5" class="text-blue-400 hover:underline">/debug/pprof/profile?seconds=5</a></span>
-            <p class="text-slate-500 mt-1">Traced functions: <code class="text-slate-300">InefficientCPUBurner</code>, <code class="text-slate-300">InefficientBubbleSorter</code>.</p>
+            <span class="text-slate-400">Path: <a href="/debug/pprof/profile?seconds=15" class="text-blue-400 hover:underline">/debug/pprof/profile?seconds=15</a></span>
+            <p class="text-slate-500 mt-1">Traced: <code class="text-slate-300">main.BigPokemonBottleneck</code> (CPU prime loops, bubble sort).</p>
           </div>
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-            <span class="text-cyan-400 font-bold block mb-1">Heap / Allocation Profile</span>
-            <span class="text-slate-400">Path: <a href="/debug/pprof/heap" class="text-blue-400 hover:underline">/debug/pprof/heap</a></span>
-            <p class="text-slate-500 mt-1">Traced: <code class="text-slate-300">InefficientMemoryAllocator</code>, GC runtime mallocs.</p>
+            <span class="text-cyan-400 font-bold block mb-1">Goroutine / Sleep Profile</span>
+            <span class="text-slate-400">Path: <a href="/debug/pprof/goroutine" class="text-blue-400 hover:underline">/debug/pprof/goroutine</a></span>
+            <p class="text-slate-500 mt-1">Traced: <code class="text-slate-300">BigPokemonBottleneck</code> (deliberate 10s sleep).</p>
           </div>
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
             <span class="text-emerald-400 font-bold block mb-1">Traffic Generator Workers</span>
@@ -539,24 +539,38 @@
       const details = document.getElementById('issueReportDetails');
 
       btn.disabled = true;
-      icon.classList.add('animate-pulse');
-      text.textContent = "Executing Backend Hotspot (~3s)...";
+      icon.classList.add('animate-spin-slow');
+      
+      let elapsedSec = 0;
+      text.textContent = `Running Bottleneck (0s / ~14s)...`;
+      const timer = setInterval(() => {
+        elapsedSec++;
+        if (elapsedSec < 3) {
+          text.textContent = `Phase 1: Heavy CPU & Memory Loops (${elapsedSec}s)...`;
+        } else if (elapsedSec < 13) {
+          text.textContent = `Phase 2: Deliberate 10s Sleep (${elapsedSec}s)...`;
+        } else {
+          text.textContent = `Phase 3: Second Wave & Finalizing (${elapsedSec}s)...`;
+        }
+      }, 1000);
 
       try {
-        const res = await fetch('/api/issue?seconds=3', { method: 'POST' });
+        // Query /api/issue with 10s sleep + 4s CPU loops
+        const res = await fetch('/api/issue?sleep=10&cpu=4', { method: 'POST' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
         const mbAllocated = (data.bytes_allocated / (1024 * 1024)).toFixed(1);
-        details.textContent = `Completed in ${data.elapsed_ms}ms | CPU Iterations: ${Number(data.cpu_iterations).toLocaleString()} | String Allocations: ~${mbAllocated} MB | Bubble Sort Passes: ${Number(data.bubble_sort_runs).toLocaleString()}`;
+        details.textContent = `Completed in ${data.elapsed_ms}ms (10s deliberate sleep + CPU loops) | CPU Iterations: ${Number(data.cpu_iterations).toLocaleString()} | String Allocations: ~${mbAllocated} MB | Bubble Sort Passes: ${Number(data.bubble_sort_passes).toLocaleString()}`;
         report.classList.remove('hidden');
       } catch (err) {
-        console.error("Error triggering issue:", err);
+        console.error("Error triggering bottleneck:", err);
         alert("Performance test failed: " + err.message);
       } finally {
+        clearInterval(timer);
         btn.disabled = false;
-        icon.classList.remove('animate-pulse');
-        text.textContent = "Trigger Performance Issue (3s)";
+        icon.classList.remove('animate-spin-slow');
+        text.textContent = "Trigger Massive Bottleneck (~14s)";
       }
     }
 

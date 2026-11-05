@@ -76,9 +76,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      nil, // DefaultServeMux
-		WriteTimeout: 75 * time.Second, // Allow Parca 30s/60s CPU profile scrapes
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		WriteTimeout: 180 * time.Second, // Allow extended bottlenecks and Parca CPU profiling
+		ReadTimeout:  30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Kubernetes Graceful Shutdown handling
@@ -232,8 +232,10 @@ func fetchPokemonData(id int) (Pokemon, error) {
 }
 
 // ============================================================================
-// PERFORMANCE HOTSPOT SECTION
-// Deliberately inefficient operations designed for Parca continuous profiling
+// PERFORMANCE BOTTLENECK SECTION (PARCA CONTINUOUS PROFILING TARGET)
+// Deliberately engineered major performance bottleneck with expensive nested loops
+// and a deliberate sleep to ensure Parca eBPF agents and pprof periodic scrapers
+// have ample time (10-15+ seconds) to capture deep flamegraphs.
 // ============================================================================
 
 func handlePerformanceIssue(w http.ResponseWriter, r *http.Request) {
@@ -242,70 +244,155 @@ func handlePerformanceIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seconds := 3
-	if secStr := r.URL.Query().Get("seconds"); secStr != "" {
-		if val, err := strconv.Atoi(secStr); err == nil && val >= 1 && val <= 30 {
-			seconds = val
+	// Default to 10s sleep + 4s CPU loops (~14s total duration)
+	sleepSec := 10
+	if sStr := r.URL.Query().Get("sleep"); sStr != "" {
+		if val, err := strconv.Atoi(sStr); err == nil && val >= 0 && val <= 60 {
+			sleepSec = val
+		}
+	}
+
+	cpuSec := 4
+	if cStr := r.URL.Query().Get("cpu"); cStr != "" {
+		if val, err := strconv.Atoi(cStr); err == nil && val >= 1 && val <= 30 {
+			cpuSec = val
+		}
+	} else if secStr := r.URL.Query().Get("seconds"); secStr != "" {
+		if val, err := strconv.Atoi(secStr); err == nil && val >= 1 && val <= 60 {
+			if val > 10 {
+				sleepSec = 10
+				cpuSec = val - 10
+			} else {
+				cpuSec = val
+			}
 		}
 	}
 
 	start := time.Now()
-	log.Printf("[Pokemon-Backend] Performance hotspot triggered for %d seconds...", seconds)
+	log.Printf("[Pokemon-Backend] Starting BigPokemonBottleneck (CPU burn: %ds, Deliberate sleep: %ds)...", cpuSec, sleepSec)
 
-	report := TriggerPerformanceIssue(time.Duration(seconds) * time.Second)
+	report := BigPokemonBottleneck(time.Duration(cpuSec)*time.Second, time.Duration(sleepSec)*time.Second)
 	report["elapsed_ms"] = time.Since(start).Milliseconds()
 
-	log.Printf("[Pokemon-Backend] Hotspot completed in %v ms.", report["elapsed_ms"])
+	log.Printf("[Pokemon-Backend] BigPokemonBottleneck completed in %v ms.", report["elapsed_ms"])
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(report)
 }
 
-// TriggerPerformanceIssue coordinates the CPU & Memory hot paths
-func TriggerPerformanceIssue(duration time.Duration) map[string]any {
-	deadline := time.Now().Add(duration)
-
+// BigPokemonBottleneck is the monolithic hot function with multiple expensive loops
+// and a deliberate sleep designed to clearly show up on Parca continuous profiling flamegraphs.
+func BigPokemonBottleneck(cpuDuration time.Duration, sleepDuration time.Duration) map[string]any {
 	var (
 		cpuIterations   int64
 		bytesAllocated  int64
 		bubbleSortCount int64
-		batchRuns       int64
+		loopsExecuted   int64
+		sinkChecksum    int64
 	)
 
-	for time.Now().Before(deadline) {
-		batchRuns++
-		// 1. CPU Hotspot: Prime factor checks & math
-		cpuIterations += InefficientCPUBurner(1200)
+	// Phase 1: Heavy CPU math, memory allocations, and bubble sorting before sleep
+	halfCPUDuration := cpuDuration / 2
+	phase1Deadline := time.Now().Add(halfCPUDuration)
 
-		// 2. Memory / GC Hotspot: String concatenation thrashing
-		bytesAllocated += InefficientMemoryAllocator(600)
+	log.Printf("[Pokemon-Backend] [Bottleneck Phase 1] Running expensive loops...")
+	for time.Now().Before(phase1Deadline) {
+		loopsExecuted++
 
-		// 3. Algorithm Hotspot: Bubble sorting large slices
-		bubbleSortCount += InefficientBubbleSorter(450)
+		// Loop A: Deep nested prime math & bitwise calculations
+		for i := 2; i < 1500; i++ {
+			if isPrimeNumber(i) {
+				for j := 2; j < 400; j++ {
+					cpuIterations++
+					sinkChecksum += int64(i ^ j)
+				}
+			}
+		}
+
+		// Loop B: Heavy memory allocations & GC pressure via repetitive string concatenation
+		var memBuffer string
+		for m := 0; m < 700; m++ {
+			memBuffer += fmt.Sprintf("bottleneck-payload-token-%04d-ts-%d;", m, time.Now().UnixNano())
+		}
+		bytesAllocated += int64(len(memBuffer))
+		if len(memBuffer) > 0 {
+			sinkChecksum += int64(memBuffer[0])
+		}
+
+		// Loop C: O(n^2) unoptimized bubble sort on large randomized integer array
+		sortSlice := make([]int, 500)
+		for s := 0; s < len(sortSlice); s++ {
+			sortSlice[s] = (500 - s) * 31 % 1000
+		}
+		for a := 0; a < len(sortSlice); a++ {
+			for b := 0; b < len(sortSlice)-a-1; b++ {
+				bubbleSortCount++
+				if sortSlice[b] > sortSlice[b+1] {
+					sortSlice[b], sortSlice[b+1] = sortSlice[b+1], sortSlice[b]
+				}
+			}
+		}
+		sinkChecksum += int64(sortSlice[0])
 	}
 
-	return map[string]any{
-		"status":              "completed",
-		"message":             "Performance issue executed. Check Parca flamegraphs for backend hotspots!",
-		"batch_runs":          batchRuns,
-		"cpu_iterations":      cpuIterations,
-		"bytes_allocated":     bytesAllocated,
-		"bubble_sort_runs":    bubbleSortCount,
-		"target_duration_sec": duration.Seconds(),
+	// Phase 2: Deliberate sleep (slows down backend, clearly captures goroutines/threads in Parca)
+	if sleepDuration > 0 {
+		log.Printf("[Pokemon-Backend] [Bottleneck Phase 2] Entering deliberate sleep of %v for Parca goroutine profiling...", sleepDuration)
+		time.Sleep(sleepDuration)
+		log.Printf("[Pokemon-Backend] [Bottleneck Phase 2] Resumed from deliberate sleep.")
 	}
-}
 
-// InefficientCPUBurner executes nested prime checks to saturate CPU cores
-func InefficientCPUBurner(limit int) int64 {
-	var count int64
-	for i := 2; i < limit; i++ {
-		if isPrimeNumber(i) {
-			for j := 2; j < limit/4; j++ {
-				count += int64(i ^ j)
+	// Phase 3: Second wave of CPU & Memory burn after sleep
+	phase3Deadline := time.Now().Add(halfCPUDuration)
+	log.Printf("[Pokemon-Backend] [Bottleneck Phase 3] Second wave of heavy loops...")
+	for time.Now().Before(phase3Deadline) {
+		loopsExecuted++
+
+		// Loop A continuation
+		for i := 2; i < 1500; i++ {
+			if isPrimeNumber(i) {
+				for j := 2; j < 400; j++ {
+					cpuIterations++
+					sinkChecksum += int64(i * j)
+				}
+			}
+		}
+
+		// Loop B continuation: Massive byte slice allocations
+		bigData := make([][]byte, 100)
+		for b := 0; b < len(bigData); b++ {
+			bigData[b] = make([]byte, 16*1024)
+			bigData[b][0] = byte(b)
+			bytesAllocated += 16 * 1024
+		}
+		sinkChecksum += int64(bigData[0][0])
+
+		// Loop C continuation: Inefficient bubble sort
+		sortSlice := make([]int, 500)
+		for s := 0; s < len(sortSlice); s++ {
+			sortSlice[s] = (500 - s) * 17 % 1000
+		}
+		for a := 0; a < len(sortSlice); a++ {
+			for b := 0; b < len(sortSlice)-a-1; b++ {
+				bubbleSortCount++
+				if sortSlice[b] > sortSlice[b+1] {
+					sortSlice[b], sortSlice[b+1] = sortSlice[b+1], sortSlice[b]
+				}
 			}
 		}
 	}
-	return count
+
+	return map[string]any{
+		"status":               "completed",
+		"message":              "Massive bottleneck completed. Check Parca flamegraphs for BigPokemonBottleneck!",
+		"loop_cycles":          loopsExecuted,
+		"cpu_iterations":       cpuIterations,
+		"bytes_allocated":      bytesAllocated,
+		"bubble_sort_passes":   bubbleSortCount,
+		"deliberate_sleep_sec": sleepDuration.Seconds(),
+		"active_cpu_burn_sec":  cpuDuration.Seconds(),
+		"sink_checksum":        sinkChecksum,
+	}
 }
 
 func isPrimeNumber(n int) bool {
@@ -318,34 +405,4 @@ func isPrimeNumber(n int) bool {
 		}
 	}
 	return true
-}
-
-// InefficientMemoryAllocator creates hundreds of temporary string objects in tight loops
-func InefficientMemoryAllocator(items int) int64 {
-	var buffer string
-	for i := 0; i < items; i++ {
-		buffer += fmt.Sprintf("pokemon-parca-spike-payload-item-%04d-timestamp-%d;", i, time.Now().UnixNano())
-	}
-	return int64(len(buffer))
-}
-
-// InefficientBubbleSorter runs an unoptimized O(n^2) bubble sort on reverse-sorted data
-func InefficientBubbleSorter(size int) int64 {
-	arr := make([]int, size)
-	for i := 0; i < size; i++ {
-		arr[i] = size - i
-	}
-
-	for i := 0; i < len(arr); i++ {
-		for j := 0; j < len(arr)-i-1; j++ {
-			if arr[j] > arr[j+1] {
-				arr[j], arr[j+1] = arr[j+1], arr[j]
-			}
-		}
-	}
-
-	if len(arr) > 0 {
-		return int64(arr[0] + arr[len(arr)-1])
-	}
-	return 0
 }

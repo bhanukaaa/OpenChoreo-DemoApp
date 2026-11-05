@@ -64,9 +64,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      mux,
-		WriteTimeout: 75 * time.Second, // Allow prolonged performance profiling responses
-		ReadTimeout:  15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		WriteTimeout: 180 * time.Second, // Allow extended bottlenecks and Parca CPU profiling
+		ReadTimeout:  30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Kubernetes Graceful Shutdown handling

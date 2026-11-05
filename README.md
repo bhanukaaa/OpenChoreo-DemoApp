@@ -45,10 +45,11 @@ The application is decomposed into 3 decoupled components:
 - **Role**: Core application service. Fetches Gen 1 Pokémon from PokeAPI concurrently, and hosts the unoptimized hotspot functions for Parca flamegraph profiling.
 - **Port**: Configurable via `PORT` (default `8080`).
 - **Continuous Profiling**: Imports `_ "net/http/pprof"`, exposing standard Go profiling at `/debug/pprof/`.
-- **Flamegraph Hotspots**:
-  - `InefficientCPUBurner`: Deep math and prime number loops.
-  - `InefficientMemoryAllocator`: Excessive string concatenation triggering heap allocation and GC pressure.
-  - `InefficientBubbleSorter`: O(n²) sorting of integer arrays.
+- **Flamegraph Hotspot (`main.BigPokemonBottleneck`)**:
+  - **Loop A (CPU Burn)**: Nested prime number checking and bitwise operations calculating hundreds of millions of iterations.
+  - **Loop B (Memory Thrashing & GC)**: Aggressive string concatenations and large byte slice allocations (allocates gigabytes of garbage objects, inducing `runtime.gcBgMarkWorker` and `runtime.mallocgc`).
+  - **Loop C (Algorithmic Inefficiency)**: O(n²) bubble sorting on 500-element arrays running millions of sorting passes.
+  - **Deliberate Sleep (`time.Sleep(10 * time.Second)`)**: A deliberate pause between the loop phases that keeps the routine suspended for 10 seconds. This ensures Parca's continuous profiling sampling intervals (typically 10s-30s) reliably catch `main.BigPokemonBottleneck` on goroutine and CPU flamegraphs without crashing the pod.
 - **Health Check**: `GET /healthz` (HTTP 200).
 
 ### 3. `loadgen/`
