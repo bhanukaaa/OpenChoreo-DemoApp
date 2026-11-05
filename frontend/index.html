@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PokeParca | Continuous Profiling Demo for OpenChoreo</title>
+  <title>PokeParca | Kubernetes Microservices Demo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,7 +25,6 @@
           animation: {
             'spin-slow': 'spin 3s linear infinite',
             'bounce-slow': 'bounce 2s infinite',
-            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
           }
         }
       }
@@ -34,7 +33,6 @@
   <style>
     .glow-red { box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.35); }
     .glow-yellow { box-shadow: 0 0 25px -5px rgba(250, 204, 21, 0.35); }
-    .glow-cyan { box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35); }
     .holo-card {
       background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
       backdrop-filter: blur(12px);
@@ -65,10 +63,9 @@
   <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col min-h-screen justify-between">
 
     <!-- Header Section -->
-    <header class="mb-8">
+    <header class="mb-6">
       <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
         <div class="flex items-center gap-4">
-          <!-- Pokeball Logo Icon -->
           <div class="relative w-12 h-12 flex-shrink-0">
             <svg class="w-12 h-12 drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="48" fill="#1e293b" stroke="#0f172a" stroke-width="4"/>
@@ -83,31 +80,53 @@
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-amber-300 bg-clip-text text-transparent">
-                PokeParca Profiler
+                PokeParca Microservices
               </h1>
               <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                OpenChoreo
+                Kubernetes Architecture
               </span>
             </div>
             <p class="text-sm text-slate-400 mt-0.5">
-              Continuous Profiling & Flamegraph Demonstration App for Parca
+              Decoupled Frontend, Backend, & LoadGen components with Parca continuous profiling
             </p>
           </div>
         </div>
 
-        <!-- System & Parca Badges -->
+        <!-- Badges -->
         <div class="flex flex-wrap items-center gap-2.5 text-xs font-mono">
-          <a href="/debug/pprof/" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors" title="Open Go pprof debug index">
+          <a href="/debug/pprof/" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors" title="View Backend Go pprof profiling">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            pprof: /debug/pprof/
+            Backend pprof: /debug/pprof/
             <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
           </a>
           <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700">
-            Port: 8080
+            Debian Bookworm (glibc)
           </span>
-          <span class="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30">
-            Gen 1 PokeAPI
-          </span>
+        </div>
+      </div>
+
+      <!-- Microservices Architecture Ribbon -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-xs font-mono">
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span class="text-slate-300 font-bold">frontend/</span>
+          </div>
+          <span class="text-slate-400" id="badgeFrontend">Port :8081</span>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-pokeRed"></span>
+            <span class="text-slate-300 font-bold">backend/</span>
+          </div>
+          <span class="text-slate-400" id="badgeBackend">BACKEND_URL</span>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-300 font-bold">loadgen/</span>
+          </div>
+          <span class="text-slate-400" id="badgeLoadgen">LOADGEN_URL</span>
         </div>
       </div>
     </header>
@@ -118,19 +137,19 @@
       <!-- Interactive Control Center -->
       <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-        <!-- Button 1: Catch 'Em All -->
+        <!-- Button 1: Catch 'Em All (Routed to Backend) -->
         <div class="lg:col-span-4 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/60 p-5 border border-slate-800 shadow-xl flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs font-bold uppercase tracking-wider text-pokeRed flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-pokeRed"></span>
-                API Fetch
+                Backend Service
               </span>
               <span class="text-xs font-mono text-slate-500">GET /api/pokemon</span>
             </div>
             <h3 class="text-lg font-bold text-white mb-1">Random Pokemon Squad</h3>
             <p class="text-xs text-slate-400 mb-5">
-              Fetches 6 random Gen 1 Pokemon concurrently via PokeAPI to test standard network I/O and JSON deserialization.
+              Frontend proxies call to backend service, which queries PokeAPI for 6 Gen 1 Pokemon concurrently.
             </p>
           </div>
           <button id="btnCatch" onclick="catchPokemon()" class="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 glow-red shadow-lg cursor-pointer">
@@ -143,23 +162,23 @@
           </button>
         </div>
 
-        <!-- Buttons 2 & 3: Background Load Generator -->
+        <!-- Buttons 2 & 3: Standalone Load Generator Service -->
         <div class="lg:col-span-4 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/60 p-5 border border-slate-800 shadow-xl flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                 <span id="loadStatusDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-                <span id="loadStatusLabel">Idle</span>
+                <span id="loadStatusLabel">LoadGen Idle</span>
               </span>
               <span class="text-xs font-mono text-slate-500">POST /api/load/*</span>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1">Traffic Load Generator</h3>
+            <h3 class="text-lg font-bold text-white mb-1">Traffic Generator Service</h3>
             <p class="text-xs text-slate-400 mb-2">
-              Runs worker goroutines executing SHA256 computations to generate continuous background traffic for Parca baselines.
+              Controls standalone loadgen pod sending continuous HTTP traffic directly into the backend pod.
             </p>
             <div id="loadMetrics" class="text-xs font-mono text-slate-400 bg-slate-950/70 p-2 rounded-lg border border-slate-800/80 mb-4 flex items-center justify-between">
               <span>Status: <strong id="lblStatusText" class="text-slate-300">Stopped</strong></span>
-              <span>Ops: <strong id="lblOpsCount" class="text-emerald-400">0</strong></span>
+              <span>Requests Sent: <strong id="lblOpsCount" class="text-emerald-400">0</strong></span>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -174,19 +193,19 @@
           </div>
         </div>
 
-        <!-- Button 4: Trigger Performance Issue -->
+        <!-- Button 4: Trigger Performance Issue (Executed on Backend) -->
         <div class="lg:col-span-4 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/60 p-5 border border-slate-800 shadow-xl flex flex-col justify-between">
           <div>
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                Parca Hotspot Spike
+                Backend Parca Spike
               </span>
               <span class="text-xs font-mono text-slate-500">POST /api/issue</span>
             </div>
             <h3 class="text-lg font-bold text-white mb-1">Trigger Performance Issue</h3>
             <p class="text-xs text-slate-400 mb-5">
-              Runs deliberately unoptimized code (CPU math loops, heavy string concatenation, & bubble sorting) to generate prominent stacks on Parca flamegraphs.
+              Runs CPU math loops, string thrashing, and bubble sort on the backend service to generate vivid Parca flamegraphs.
             </p>
           </div>
           <button id="btnIssue" onclick="triggerPerformanceIssue()" class="w-full py-3.5 px-4 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 glow-yellow shadow-lg cursor-pointer">
@@ -199,7 +218,7 @@
 
       </section>
 
-      <!-- Spike Execution Report Alert (Shown after Triggering Issue) -->
+      <!-- Execution Report Alert -->
       <div id="issueReport" class="hidden rounded-xl border border-amber-500/40 bg-amber-950/30 p-4 transition-all">
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-start gap-3">
@@ -207,12 +226,10 @@
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </div>
             <div>
-              <h4 class="text-sm font-bold text-amber-200">Performance Hotspot Executed Successfully</h4>
-              <p id="issueReportDetails" class="text-xs text-amber-300/80 mt-1 font-mono leading-relaxed">
-                Duration: 3010ms | CPU Prime Computations: 4.2M | String Allocation Garbage: ~94 MB | Bubble Sort Iterations: 1,420
-              </p>
+              <h4 class="text-sm font-bold text-amber-200">Backend Performance Hotspot Executed</h4>
+              <p id="issueReportDetails" class="text-xs text-amber-300/80 mt-1 font-mono leading-relaxed"></p>
               <p class="text-xs text-slate-400 mt-2">
-                Flamegraph clue: In Parca UI, look for functions <code class="text-amber-300 font-mono">main.InefficientCPUBurner</code>, <code class="text-amber-300 font-mono">main.InefficientMemoryAllocator</code>, and <code class="text-amber-300 font-mono">main.InefficientBubbleSorter</code>.
+                Flamegraph target: Open your Parca UI and filter profile for pod <code class="text-amber-300 font-mono">pokemon-backend</code> to inspect functions <code class="text-amber-300 font-mono">main.InefficientCPUBurner</code> and <code class="text-amber-300 font-mono">main.InefficientMemoryAllocator</code>.
               </p>
             </div>
           </div>
@@ -231,10 +248,9 @@
               0 / 6
             </span>
           </div>
-          <span class="text-xs text-slate-500">Auto-balanced Gen 1 Roster</span>
+          <span class="text-xs text-slate-500">Fetched through Backend Service</span>
         </div>
 
-        <!-- Initial Placeholder State -->
         <div id="emptyState" class="rounded-2xl border-2 border-dashed border-slate-800 p-12 text-center flex flex-col items-center justify-center">
           <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mb-4 animate-bounce-slow">
             <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -245,13 +261,12 @@
           </div>
           <h3 class="text-base font-bold text-slate-300">No Pokemon encountered yet</h3>
           <p class="text-xs text-slate-500 max-w-sm mt-1">
-            Click the <strong class="text-pokeRed">"Catch 'Em All!"</strong> button above to pull 6 random Gen 1 Pokemon from PokeAPI.
+            Click the <strong class="text-pokeRed">"Catch 'Em All!"</strong> button to request 6 random Pokemon from the backend.
           </p>
         </div>
 
-        <!-- Loading Skeleton State -->
+        <!-- Skeleton Loading -->
         <div id="loadingGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <!-- 6 skeleton cards -->
           <div class="rounded-2xl p-4 bg-slate-900/60 border border-slate-800 animate-pulse h-72 flex flex-col items-center justify-between">
             <div class="w-12 h-4 bg-slate-800 rounded self-start"></div>
             <div class="w-28 h-28 rounded-full bg-slate-800"></div>
@@ -290,33 +305,30 @@
           </div>
         </div>
 
-        <!-- Rendered Pokemon Grid -->
-        <div id="pokemonGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <!-- Dynamically populated via JS -->
-        </div>
+        <div id="pokemonGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"></div>
       </section>
 
-      <!-- Parca Continuous Profiling Cheat Sheet -->
+      <!-- Profiling Cheatsheet -->
       <section class="rounded-2xl bg-slate-900/40 border border-slate-800/80 p-5 mt-6">
         <div class="flex items-center gap-2 mb-3">
           <svg class="w-5 h-5 text-pokeYellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          <h3 class="text-sm font-bold text-slate-200">Parca Continuous Profiling Cheatsheet</h3>
+          <h3 class="text-sm font-bold text-slate-200">Kubernetes & Parca Profiling Cheatsheet</h3>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-            <span class="text-amber-400 font-bold block mb-1">CPU Flamegraph</span>
-            <span class="text-slate-400">Endpoint: <a href="/debug/pprof/profile?seconds=5" class="text-blue-400 hover:underline">/debug/pprof/profile?seconds=5</a></span>
+            <span class="text-amber-400 font-bold block mb-1">Backend CPU Flamegraph</span>
+            <span class="text-slate-400">Path: <a href="/debug/pprof/profile?seconds=5" class="text-blue-400 hover:underline">/debug/pprof/profile?seconds=5</a></span>
             <p class="text-slate-500 mt-1">Traced functions: <code class="text-slate-300">InefficientCPUBurner</code>, <code class="text-slate-300">InefficientBubbleSorter</code>.</p>
           </div>
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-            <span class="text-cyan-400 font-bold block mb-1">Heap / Memory Profile</span>
-            <span class="text-slate-400">Endpoint: <a href="/debug/pprof/heap" class="text-blue-400 hover:underline">/debug/pprof/heap</a></span>
-            <p class="text-slate-500 mt-1">Traced functions: <code class="text-slate-300">InefficientMemoryAllocator</code>, GC runtime mallocs.</p>
+            <span class="text-cyan-400 font-bold block mb-1">Heap / Allocation Profile</span>
+            <span class="text-slate-400">Path: <a href="/debug/pprof/heap" class="text-blue-400 hover:underline">/debug/pprof/heap</a></span>
+            <p class="text-slate-500 mt-1">Traced: <code class="text-slate-300">InefficientMemoryAllocator</code>, GC runtime mallocs.</p>
           </div>
           <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
-            <span class="text-emerald-400 font-bold block mb-1">Goroutine & Threading</span>
-            <span class="text-slate-400">Endpoint: <a href="/debug/pprof/goroutine" class="text-blue-400 hover:underline">/debug/pprof/goroutine</a></span>
-            <p class="text-slate-500 mt-1">Inspect background workers: <code class="text-slate-300">workerLoop</code> from the Load Generator.</p>
+            <span class="text-emerald-400 font-bold block mb-1">Traffic Generator Workers</span>
+            <span class="text-slate-400">Path: <a href="/api/load/status" class="text-blue-400 hover:underline">/api/load/status</a></span>
+            <p class="text-slate-500 mt-1">LoadGen continuously fires HTTP requests directly into backend.</p>
           </div>
         </div>
       </section>
@@ -326,9 +338,9 @@
     <!-- Footer -->
     <footer class="mt-12 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
       <div class="flex items-center gap-2">
-        <span>OpenChoreo Parca Profiling Demo</span>
+        <span>Pokemon Microservices Architecture</span>
         <span>•</span>
-        <span class="font-mono">Go 1.23 + net/http/pprof</span>
+        <span class="font-mono">Go + Debian Bookworm (glibc)</span>
       </div>
       <div>
         Sprites provided by <a href="https://pokeapi.co" target="_blank" class="text-slate-400 hover:text-white underline">PokeAPI</a>
@@ -338,7 +350,6 @@
   </div>
 
   <script>
-    // Pokemon Type Badges Colors
     const typeColors = {
       fire: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
       water: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -358,7 +369,22 @@
       fairy: 'bg-rose-400/20 text-rose-300 border-rose-400/30'
     };
 
-    // 1. Catch 'Em All handler
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.components) {
+            document.getElementById('badgeFrontend').textContent = data.components.frontend;
+            document.getElementById('badgeBackend').textContent = data.components.backend;
+            document.getElementById('badgeLoadgen').textContent = data.components.loadgen;
+          }
+        }
+      } catch (e) {
+        console.error("Config fetch error:", e);
+      }
+    }
+
     async function catchPokemon() {
       const btn = document.getElementById('btnCatch');
       const text = document.getElementById('textCatch');
@@ -370,17 +396,18 @@
 
       btn.disabled = true;
       icon.classList.add('animate-spin-slow');
-      text.textContent = "Catching Pokemon...";
-
+      text.textContent = "Routing to Backend...";
       emptyState.classList.add('hidden');
       pokemonGrid.classList.add('hidden');
       loadingGrid.classList.remove('hidden');
 
       try {
         const response = await fetch('/api/pokemon');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
+        }
         const squad = await response.json();
-
         renderSquad(squad);
         teamCountBadge.textContent = `${squad.length} / 6`;
       } catch (err) {
@@ -435,7 +462,6 @@
               ${typesHTML}
             </div>
 
-            <!-- Mini Stat indicators -->
             <div class="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-slate-800/80 text-[10px] font-mono text-slate-400">
               <div>
                 <span class="block text-slate-500">HP</span>
@@ -458,7 +484,6 @@
       grid.classList.remove('hidden');
     }
 
-    // 2 & 3. Load Generator Toggle handlers
     async function toggleLoad(start) {
       const endpoint = start ? '/api/load/start' : '/api/load/stop';
       try {
@@ -478,13 +503,13 @@
 
       if (running) {
         dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-        label.textContent = "Generating Traffic (" + (uptime || 0) + "s)";
+        label.textContent = "LoadGen Active (" + (uptime || 0) + "s)";
         label.className = "text-emerald-400 font-bold";
         statusText.textContent = "Running";
         statusText.className = "text-emerald-400 font-bold";
       } else {
         dot.className = "w-2 h-2 rounded-full bg-slate-500";
-        label.textContent = "Idle";
+        label.textContent = "LoadGen Idle";
         label.className = "text-slate-400";
         statusText.textContent = "Stopped";
         statusText.className = "text-slate-400";
@@ -495,7 +520,6 @@
       }
     }
 
-    // Poll load status periodically to keep UI updated
     async function pollLoadStatus() {
       try {
         const res = await fetch('/api/load/status');
@@ -503,13 +527,10 @@
           const data = await res.json();
           updateLoadUI(data.running, data.uptime_seconds, data.ops_count);
         }
-      } catch (e) {
-        // silent fail on poll
-      }
+      } catch (e) {}
     }
     setInterval(pollLoadStatus, 2500);
 
-    // 4. Trigger Performance Issue handler
     async function triggerPerformanceIssue() {
       const btn = document.getElementById('btnIssue');
       const text = document.getElementById('textIssue');
@@ -519,12 +540,12 @@
 
       btn.disabled = true;
       icon.classList.add('animate-pulse');
-      text.textContent = "Simulating Hotspot (takes ~3s)...";
+      text.textContent = "Executing Backend Hotspot (~3s)...";
 
       try {
         const res = await fetch('/api/issue?seconds=3', { method: 'POST' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await responseData(res);
+        const data = await res.json();
 
         const mbAllocated = (data.bytes_allocated / (1024 * 1024)).toFixed(1);
         details.textContent = `Completed in ${data.elapsed_ms}ms | CPU Iterations: ${Number(data.cpu_iterations).toLocaleString()} | String Allocations: ~${mbAllocated} MB | Bubble Sort Passes: ${Number(data.bubble_sort_runs).toLocaleString()}`;
@@ -539,16 +560,8 @@
       }
     }
 
-    async function responseData(res) {
-      try {
-        return await res.json();
-      } catch (e) {
-        return { elapsed_ms: "N/A", cpu_iterations: "N/A", bytes_allocated: 0, bubble_sort_runs: "N/A" };
-      }
-    }
-
-    // Auto-fetch initial squad on load for instant visual feedback
     window.addEventListener('DOMContentLoaded', () => {
+      loadConfig();
       pollLoadStatus();
       catchPokemon();
     });

@@ -1,67 +1,139 @@
-# PokeParca Demo Application
+# PokeParca Microservices Architecture (Kubernetes & Parca Ready)
 
-A simple, modern Go web application designed for deployment on **OpenChoreo** to demonstrate and test continuous profiling with **Parca**.
+A 12-Factor, Kubernetes-native microservices application designed for continuous profiling demonstration with **Parca**.
 
-It exposes Go's standard `net/http/pprof` endpoints, provides a Pokemon-themed responsive UI, generates controllable background traffic, and features a performance hotspot simulation designed to stand out clearly on Parca CPU and memory flamegraphs.
-
----
-
-## Architecture Overview
-
-- **Backend**: Standard library Go (`net/http`) with `_ "net/http/pprof"` profiling endpoints enabled.
-- **Frontend**: Pokemon-themed responsive Single Page Application (`index.html`) embedded directly into the Go binary via `//go:embed`, styled with Tailwind CSS.
-- **Container**: Multi-stage, minimal Alpine Docker image with CA certificates and non-root execution.
+Built with standard Go (`net/http`), compiled with standard **Debian Bookworm (glibc)** base images (no Alpine), and completely configurable via environment variables.
 
 ---
 
-## Endpoints
+## 1. Microservice Components
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/` | Serves the Pokemon UI dashboard (`index.html`) |
-| `GET` | `/healthz` | Kubernetes / OpenChoreo health check probe |
-| `GET` | `/api/pokemon` | Concurrently fetches 6 random Gen 1 Pokemon from PokeAPI |
-| `POST` | `/api/load/start` | Starts continuous background traffic generation |
-| `POST` | `/api/load/stop` | Stops background traffic generation |
-| `GET` | `/api/load/status` | Returns traffic generator status, uptime, and ops count |
-| `POST` | `/api/issue` | Triggers CPU math loops, string allocation thrashing, and bubble sort (takes ~3s) |
-| `GET` | `/debug/pprof/*` | Standard Go pprof endpoints scraped by Parca |
+The application is decomposed into 3 decoupled components:
 
----
-
-## How it Shows Up on Parca Flamegraphs
-
-When you click **"Trigger Performance Issue"** (`POST /api/issue`), the backend runs unoptimized routines specifically designed to be easily identified in Parca:
-
-1. **CPU Profile** (`/debug/pprof/profile`):
-   - `main.TriggerPerformanceIssue`
-     - `main.InefficientCPUBurner` (Prime factor & bitwise operations in nested loops)
-     - `main.InefficientBubbleSorter` (O(n²) bubble sorting on reverse arrays)
-2. **Memory / Heap Profile** (`/debug/pprof/heap`):
-   - `main.TriggerPerformanceIssue`
-     - `main.InefficientMemoryAllocator` (Repetitive string concatenation causing heap re-allocations and GC pressure)
-3. **Goroutine Profile** (`/debug/pprof/goroutine`):
-   - `main.(*LoadGenerator).workerLoop` (Displays the background simulated transaction workers)
-
----
-
-## Quickstart
-
-### Running with Docker
-
-```bash
-# Build the Docker image
-docker build -t pokemon-parca-demo:latest .
-
-# Run the container on port 8080
-docker run -p 8080:8080 pokemon-parca-demo:latest
+```
+                  ┌────────────────────────┐
+                  │    User Browser / UI   │
+                  └───────────┬────────────┘
+                              │
+                    HTTP (Port 8081 / 80)
+                              ▼
+                  ┌────────────────────────┐
+                  │    frontend Service    │
+                  │  (BFF & Reverse Proxy) │
+                  └──────┬──────────┬──────┘
+                         │          │
+      GET /api/pokemon   │          │  POST /api/load/*
+      POST /api/issue    │          │  (Start / Stop / Status)
+                         ▼          ▼
+            ┌──────────────────┐  ┌──────────────────┐
+            │ backend Service  │  │ loadgen Service  │
+            │  (PokeAPI +      │  │  (Standalone     │
+            │   Parca pprof)   │◀─┤   Traffic Gen)   │
+            └──────────────────┘  └──────────────────┘
+                 Port: 8080            Port: 8082
+             Scraped by Parca       Fires requests
+                                      to Backend
 ```
 
-Open your browser at [http://localhost:8080](http://localhost:8080).
+### 1. `frontend/`
+- **Role**: Serves the Pokémon Single-Page Application (`index.html`) and acts as a reverse proxy / API gateway.
+- **Port**: Configurable via `PORT` (default `8081`).
+- **Dependencies**: Proxies `/api/pokemon`, `/api/issue`, and `/debug/pprof/*` to `BACKEND_URL`, and `/api/load/*` to `LOADGEN_URL`.
+- **Health Check**: `GET /healthz` (HTTP 200).
 
-### Deploying to OpenChoreo
+### 2. `backend/`
+- **Role**: Core application service. Fetches Gen 1 Pokémon from PokeAPI concurrently, and hosts the unoptimized hotspot functions for Parca flamegraph profiling.
+- **Port**: Configurable via `PORT` (default `8080`).
+- **Continuous Profiling**: Imports `_ "net/http/pprof"`, exposing standard Go profiling at `/debug/pprof/`.
+- **Flamegraph Hotspots**:
+  - `InefficientCPUBurner`: Deep math and prime number loops.
+  - `InefficientMemoryAllocator`: Excessive string concatenation triggering heap allocation and GC pressure.
+  - `InefficientBubbleSorter`: O(n²) sorting of integer arrays.
+- **Health Check**: `GET /healthz` (HTTP 200).
 
-1. Push this repository or the built image to your container registry.
-2. In OpenChoreo, configure a Web Service component pointing to port `8080`.
-3. Set the liveness/readiness probe path to `/healthz`.
-4. Ensure Parca agent is configured in your cluster or pod to scrape port `8080` at path `/debug/pprof`.
+### 3. `loadgen/`
+- **Role**: Standalone load generator simulating real-world traffic against the `backend` service.
+- **Port**: Configurable via `PORT` (default `8082`).
+- **Control API**:
+  - `POST /api/load/start`: Spawns worker goroutines sending requests to `${BACKEND_URL}/api/pokemon` and `${BACKEND_URL}/healthz`.
+  - `POST /api/load/stop`: Gracefully stops traffic workers.
+  - `GET /api/load/status`: Returns runtime metrics (uptime, ops count, error count).
+- **Health Check**: `GET /healthz` (HTTP 200).
+
+---
+
+## 2. Environment Variables (12-Factor App)
+
+No ports or URLs are hardcoded. All components read their configuration from environment variables:
+
+| Component | Variable | Default | Description |
+|---|---|---|---|
+| **frontend** | `PORT` | `8081` | Port frontend listens on |
+| **frontend** | `BACKEND_URL` | `http://localhost:8080` | URL of the backend service |
+| **frontend** | `LOADGEN_URL` | `http://localhost:8082` | URL of the loadgen service |
+| **backend** | `PORT` | `8080` | Port backend listens on |
+| **loadgen** | `PORT` | `8082` | Port loadgen listens on |
+| **loadgen** | `BACKEND_URL` | `http://localhost:8080` | Target backend URL to generate traffic against |
+| **loadgen** | `WORKERS` | `2` | Number of concurrent traffic workers |
+| **loadgen** | `REQUEST_DELAY_MS` | `150` | Interval between worker HTTP requests |
+
+---
+
+## 3. Container Images (No Alpine)
+
+All Dockerfiles follow a clean multi-stage pattern using glibc:
+- **Build stage**: `golang:1.23-bookworm` (preserves symbols and DWARF for Parca).
+- **Runtime stage**: `debian:bookworm-slim` (standard glibc, CA certificates, non-root `appuser` UID 10001).
+
+---
+
+## 4. Running Locally
+
+### With Docker Compose
+```bash
+docker compose up --build
+```
+Open [http://localhost:8081](http://localhost:8081) in your browser.
+
+### Manually with Docker
+```bash
+# 1. Create network
+docker network create poke-net
+
+# 2. Start Backend
+docker run -d --name poke-backend --net poke-net \
+  -e PORT=8080 pokemon-backend:latest
+
+# 3. Start LoadGen
+docker run -d --name poke-loadgen --net poke-net \
+  -e PORT=8082 -e BACKEND_URL=http://poke-backend:8080 pokemon-loadgen:latest
+
+# 4. Start Frontend
+docker run -d --name poke-frontend --net poke-net -p 8081:8081 \
+  -e PORT=8081 \
+  -e BACKEND_URL=http://poke-backend:8080 \
+  -e LOADGEN_URL=http://poke-loadgen:8082 \
+  pokemon-frontend:latest
+```
+
+---
+
+## 5. Kubernetes Deployment
+
+Apply the all-in-one manifest:
+
+```bash
+kubectl apply -f k8s/deployment.yaml
+```
+
+This deploys:
+1. `pokemon-backend` Deployment & Service with Parca scraping annotations:
+   ```yaml
+   annotations:
+     parca.dev/scrape: "true"
+     parca.dev/port: "8080"
+     parca.dev/path: "/debug/pprof"
+   ```
+2. `pokemon-loadgen` Deployment & Service with internal DNS configuration.
+3. `pokemon-frontend` Deployment & Service routing requests across the cluster.
+4. Liveness and Readiness probes configured on `/healthz` for all pods.
