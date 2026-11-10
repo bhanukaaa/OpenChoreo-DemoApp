@@ -68,18 +68,32 @@ func main() {
 		port = "8080"
 	}
 
-	// DefaultServeMux automatically has /debug/pprof/ mounted by the blank import
-	http.HandleFunc("/healthz", handleHealthz)
-	http.HandleFunc("/api/pokemon", handlePokemon)
-	http.HandleFunc("/api/issue", handlePerformanceIssue)
+	// 1. Dedicated Mux for public API endpoints on port 8080
+	apiMux := http.NewServeMux()
+	apiMux.HandleFunc("/healthz", handleHealthz)
+	apiMux.HandleFunc("/api/pokemon", handlePokemon)
+	apiMux.HandleFunc("/api/issue", handlePerformanceIssue)
 
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      nil, // DefaultServeMux
-		WriteTimeout: 180 * time.Second, // Allow extended bottlenecks and Parca CPU profiling
+		Handler:      apiMux, // Guarded public routes only
+		WriteTimeout: 180 * time.Second,
 		ReadTimeout:  30 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+
+	// 2. Internal listener on 8084 for Parca pprof scraping (DefaultServeMux has pprof)
+	profilingServer := &http.Server{
+		Addr:    ":8084",
+		Handler: nil, // Uses http.DefaultServeMux where pprof is mounted
+	}
+
+	go func() {
+		log.Println("[Pokemon-Backend] Starting Parca profiling listener on :8084...")
+		if err := profilingServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("[Pokemon-Backend] Profiling listener error: %v", err)
+		}
+	}()
 
 	// Kubernetes Graceful Shutdown handling
 	stopChan := make(chan os.Signal, 1)
@@ -90,7 +104,7 @@ func main() {
 		log.Printf("[Pokemon-Backend] Health check:    http://localhost:%s/healthz", port)
 		log.Printf("[Pokemon-Backend] Pokemon API:     http://localhost:%s/api/pokemon", port)
 		log.Printf("[Pokemon-Backend] Performance API: http://localhost:%s/api/issue", port)
-		log.Printf("[Pokemon-Backend] Parca pprof:     http://localhost:%s/debug/pprof/", port)
+		log.Printf("[Pokemon-Backend] Parca pprof:     http://localhost:8084/debug/pprof/")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("[Pokemon-Backend] Fatal server error: %v", err)
 		}
@@ -102,6 +116,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	_ = profilingServer.Shutdown(ctx)
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("[Pokemon-Backend] Shutdown warning: %v", err)
 	}
